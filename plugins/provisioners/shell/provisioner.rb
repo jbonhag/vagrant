@@ -40,9 +40,9 @@ module VagrantPlugins
 
       def upload_path
         if !defined?(@_upload_path)
-          @_upload_path = config.upload_path
+          @_upload_path = config.upload_path.to_s
 
-          if @_upload_path.nil?
+          if @_upload_path.empty?
             case @machine.config.vm.communicator
             when :winssh
               @_upload_path = "C:\\tmp\\vagrant-shell"
@@ -130,7 +130,6 @@ module VagrantPlugins
           # Upload the script to the machine
           @machine.communicate.tap do |comm|
             env = config.env.map{|k,v| comm.generate_environment_export(k, v)}.join
-            upload_path = upload_path.to_s
             if File.extname(upload_path).empty?
               remote_ext = @machine.config.winssh.shell == "powershell" ? "ps1" : "bat"
               upload_path << ".#{remote_ext}"
@@ -190,7 +189,6 @@ module VagrantPlugins
           @machine.communicate.tap do |comm|
             # Make sure that the upload path has an extension, since
             # having an extension is critical for Windows execution
-            upload_path = upload_path.to_s
             if File.extname(upload_path) == ""
               upload_path += File.extname(path.to_s)
             end
