@@ -79,10 +79,10 @@ module VagrantPlugins
         env = config.env.map { |k,v| "#{k}=#{quote_and_escape(v.to_s)}" }
         env = env.join(" ")
 
-        command =  "chmod +x '#{config.upload_path}'"
+        command =  "chmod +x '#{upload_path}'"
         command << " &&"
         command << " #{env}" if !env.empty?
-        command << " #{config.upload_path}#{args}"
+        command << " #{upload_path}#{args}"
 
         with_script_file do |path|
           # Upload the script to the machine
@@ -95,10 +95,10 @@ module VagrantPlugins
             end
 
             user = info[:username]
-            comm.sudo("chown -R #{user} #{config.upload_path}",
+            comm.sudo("chown -R #{user} #{upload_path}",
                       error_check: false)
 
-            comm.upload(path.to_s, config.upload_path)
+            comm.upload(path.to_s, upload_path)
 
             if config.name
               @machine.ui.detail(I18n.t("vagrant.provisioners.shell.running",
@@ -130,7 +130,7 @@ module VagrantPlugins
           # Upload the script to the machine
           @machine.communicate.tap do |comm|
             env = config.env.map{|k,v| comm.generate_environment_export(k, v)}.join
-            upload_path = config.upload_path.to_s
+            upload_path = upload_path.to_s
             if File.extname(upload_path).empty?
               remote_ext = @machine.config.winssh.shell == "powershell" ? "ps1" : "bat"
               upload_path << ".#{remote_ext}"
@@ -190,7 +190,7 @@ module VagrantPlugins
           @machine.communicate.tap do |comm|
             # Make sure that the upload path has an extension, since
             # having an extension is critical for Windows execution
-            upload_path = config.upload_path.to_s
+            upload_path = upload_path.to_s
             if File.extname(upload_path) == ""
               upload_path += File.extname(path.to_s)
             end
