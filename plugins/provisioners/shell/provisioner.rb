@@ -38,6 +38,22 @@ module VagrantPlugins
         end
       end
 
+      def upload_path
+        if !defined?(@_upload_path)
+          @_upload_path = config.upload_path
+
+          if @_upload_path.nil?
+            case @machine.config.vm.communicator
+            when :winssh
+              @_upload_path = "C:\\tmp\\vagrant-shell"
+            else
+              @_upload_path = "/tmp/vagrant-shell"
+            end
+          end
+        end
+        @_upload_path
+      end
+
       protected
 
       # This handles outputting the communication data back to the UI
