@@ -325,7 +325,7 @@ describe "Vagrant::Shell::Provisioner" do
   end
 
   describe ".upload_path" do
-    context "when upload path is not set in config" do
+    context "when upload path is not set" do
       let(:vsp) {
         VagrantPlugins::Shell::Provisioner.new(machine, config)
       }
@@ -345,7 +345,7 @@ describe "Vagrant::Shell::Provisioner" do
         )
       }
 
-      it "should default upload path to /tmp/vagrant-shell" do
+      it "should default to /tmp/vagrant-shell" do
         expect(vsp.upload_path).to eq("/tmp/vagrant-shell")
       end
 
@@ -354,13 +354,13 @@ describe "Vagrant::Shell::Provisioner" do
           allow(machine).to receive_message_chain(:config, :vm, :communicator).and_return(:winssh)
         end
 
-        it "should default upload path to C:\\Windows\\Temp\\vagrant-shell" do
+        it "should default to C:\\Windows\\Temp\\vagrant-shell" do
           expect(vsp.upload_path).to eq("C:\\Windows\\Temp\\vagrant-shell")
         end
       end
     end
 
-    context "when upload_path is set in config" do
+    context "when upload_path is set" do
       let(:config) {
         double(
           :config,
@@ -385,7 +385,7 @@ describe "Vagrant::Shell::Provisioner" do
       end
     end
 
-    context "with cached value for upload_path" do
+    context "with cached value" do
       let(:config) { double(:config) }
 
       let(:vsp) {
