@@ -220,7 +220,7 @@ SCRIPT
         info = @machine.ssh_info
         opts = {}
 
-        command = "mkdir \"#{dir}\""
+        command = "if not exist \"#{dir}\" mkdir \"#{dir}\""
         opts[:extra_args] = [command]
         opts[:subprocess] = true
         Vagrant::Util::SSH.exec(info, opts)
