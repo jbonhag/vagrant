@@ -354,8 +354,8 @@ describe "Vagrant::Shell::Provisioner" do
           allow(machine).to receive_message_chain(:config, :vm, :communicator).and_return(:winssh)
         end
 
-        it "should default upload path to C:\\tmp\\vagrant-shell" do
-          expect(vsp.upload_path).to eq("C:\\tmp\\vagrant-shell")
+        it "should default upload path to C:\\Windows\\Temp\\vagrant-shell" do
+          expect(vsp.upload_path).to eq("C:\\Windows\\Temp\\vagrant-shell")
         end
       end
     end
