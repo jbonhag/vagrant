@@ -156,6 +156,75 @@ SCRIPT
         @machine.config.winssh
       end
 
+      def upload(from, to)
+        @logger.debug("Uploading: #{from} to #{to}")
+
+        if File.directory?(from)
+          if from.end_with?(".")
+            @logger.debug("Uploading directory contents of: #{from}")
+            from = from.sub(/\.$/, "")
+          else
+            @logger.debug("Uploading full directory container of: #{from}")
+            to = File.join(to, File.basename(File.expand_path(from)))
+          end
+        end
+
+        scp_connect do |scp|
+          uploader = lambda do |path, remote_dest=nil|
+            if File.directory?(path)
+              Dir.new(path).each do |entry|
+                next if entry == "." || entry == ".."
+                full_path = File.join(path, entry)
+                dest = File.join(to, path.sub(/^#{Regexp.escape(from)}/, ""))
+                create_remote_directory(dest)
+                uploader.call(full_path, dest)
+              end
+            else
+              if remote_dest
+                dest = File.join(remote_dest, File.basename(path))
+              else
+                dest = to
+                if to.end_with?(File::SEPARATOR)
+                  dest = File.join(to, File.basename(path))
+                end
+              end
+              @logger.debug("Ensuring remote directory exists for destination upload")
+              create_remote_directory(dest.split("\\")[0..-2].join("\\"))
+              @logger.debug("Uploading file #{path} to remote #{dest}")
+              upload_file = File.open(path, "rb")
+              begin
+                scp.upload!(upload_file, dest)
+              ensure
+                upload_file.close
+              end
+            end
+          end
+          uploader.call(from)
+        end
+      rescue RuntimeError => e
+        # Net::SCP raises a runtime error for this so the only way we have
+        # to really catch this exception is to check the message to see if
+        # it is something we care about. If it isn't, we re-raise.
+        raise if e.message !~ /Permission denied/
+
+        # Otherwise, it is a permission denied, so let's raise a proper
+        # exception
+        raise Vagrant::Errors::SCPPermissionDenied,
+          from: from.to_s,
+          to: to.to_s
+      end
+
+      def create_remote_directory(dir)
+        # We can't wrap this in a script because we need to be able to create a
+        # directory as a one-off command.
+        info = @machine.ssh_info
+        opts = {}
+
+        command = "mkdir \"#{dir}\""
+        opts[:extra_args] = [command]
+        opts[:subprocess] = true
+        Vagrant::Util::SSH.exec(info, opts)
+      end
     end
   end
 end
