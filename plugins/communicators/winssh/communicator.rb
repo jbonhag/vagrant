@@ -15,11 +15,13 @@ module VagrantPlugins
       def shell_execute(connection, command, **opts)
         opts = {
           sudo: false,
-          shell: nil
+          shell: nil,
+          wrap: true
         }.merge(opts)
 
         sudo  = opts[:sudo]
         shell = (opts[:shell] || machine_config_ssh.shell).to_s
+        wrap  = opts[:wrap]
 
         @logger.info("Execute: #{command} (sudo=#{sudo.inspect})")
         exit_status = nil
@@ -31,14 +33,36 @@ module VagrantPlugins
           stderr_marker_found = false
           stderr_data_buffer = ''
 
-          if shell == "powershell"
-            base_cmd = <<-SCRIPT.force_encoding('ASCII-8BIT')
-powershell Write-Host #{CMD_GARBAGE_MARKER}; [Console]::Error.WriteLine('#{CMD_GARBAGE_MARKER}') #{command}"
+          if wrap
+            tfile = Tempfile.new('vagrant-ssh')
+            remote_ext = shell == "powershell" ? "ps1" : "bat"
+            remote_name = "#{machine_config_ssh.upload_directory}\\#{File.basename(tfile.path)}.#{remote_ext}"
+
+            if shell == "powershell"
+              base_cmd = "powershell -File #{remote_name}"
+              tfile.puts <<-SCRIPT.force_encoding('ASCII-8BIT')
+Remove-Item #{remote_name}
+Write-Host #{CMD_GARBAGE_MARKER}
+[Console]::Error.WriteLine("#{CMD_GARBAGE_MARKER}")
+#{command}
 SCRIPT
+            else
+              base_cmd = remote_name
+              tfile.puts <<-SCRIPT.force_encoding('ASCII-8BIT')
+ECHO OFF
+ECHO #{CMD_GARBAGE_MARKER}
+ECHO #{CMD_GARBAGE_MARKER} 1>&2
+#{command}
+SCRIPT
+            end
+
+            tfile.close
+            upload(tfile.path, remote_name)
+            tfile.delete
           else
-            base_cmd = <<-SCRIPT.force_encoding('ASCII-8BIT')
-cmd /Q /C ECHO #{CMD_GARBAGE_MARKER} && ECHO #{CMD_GARBAGE_MARKER} 1>&2 && #{command}
-SCRIPT
+            if shell == "cmd"
+              base_cmd = "ECHO OFF && ECHO #{CMD_GARBAGE_MARKER} && ECHO #{CMD_GARBAGE_MARKER} 1>&2 && #{command}"
+            end
           end
 
           base_cmd = shell_cmd(opts.merge(shell: base_cmd))
@@ -199,7 +223,7 @@ SCRIPT
       end
 
       def create_remote_directory(dir)
-        execute("if not exist \"#{dir}\" mkdir \"#{dir}\"", shell: "cmd")
+        execute("if not exist \"#{dir}\" mkdir \"#{dir}\"", shell: "cmd", wrap: false)
       end
     end
   end
