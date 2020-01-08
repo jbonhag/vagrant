@@ -62,17 +62,15 @@ describe VagrantPlugins::CommunicatorWinSSH::Communicator do
   let(:command_stderr_data) { '' }
   # Mock for net-ssh scp
   let(:scp) { double("scp") }
-  # Stub file to match commands
-  let(:ssh_cmd_file){ double("ssh_cmd_file", path: "/dev/null/path") }
 
   # Setup for commands using the net-ssh connection. This can be reused where needed
   # by providing to `before`
   connection_setup = proc do
     allow(connection).to receive(:logger)
-    allow(connection).to receive(:closed?).and_return false
+    allow(connection).to receive(:closed?).and_return(false)
     allow(connection).to receive(:open_channel).
       and_yield(channel).and_return(channel)
-    allow(channel).to receive(:wait).and_return true
+    allow(channel).to receive(:wait).and_return(true)
     allow(channel).to receive(:close)
     allow(command_channel).to receive(:send_data)
     allow(command_channel).to receive(:eof!)
@@ -88,15 +86,11 @@ describe VagrantPlugins::CommunicatorWinSSH::Communicator do
     allow(channel).to receive(:on_request)
     allow(channel).to receive(:on_process)
     allow(channel).to receive(:exec).with(anything).
-      and_yield(command_channel, '').and_return channel
+      and_yield(command_channel, '').and_return(channel)
     expect(command_channel).to receive(:on_request).with('exit-status').
       and_yield(nil, exit_data)
     # Return mocked net-ssh connection during setup
     allow(communicator).to receive(:retryable).and_return(connection)
-    allow(Tempfile).to receive(:new).with(/vagrant-ssh/).and_return(ssh_cmd_file)
-    allow(ssh_cmd_file).to receive(:puts)
-    allow(ssh_cmd_file).to receive(:close)
-    allow(ssh_cmd_file).to receive(:delete)
     allow(scp).to receive(:upload!)
     allow(communicator).to receive(:scp_connect).and_return(true)
   end
@@ -132,11 +126,11 @@ describe VagrantPlugins::CommunicatorWinSSH::Communicator do
 
     context "with an invalid shell test" do
       before do
-        expect(exit_data).to receive(:read_long).and_return 1
+        expect(exit_data).to receive(:read_long).and_return(1)
       end
 
       it "returns raises SSHInvalidShell error" do
-        expect{ communicator.ready? }.to raise_error Vagrant::Errors::SSHInvalidShell
+        expect{ communicator.ready? }.to raise_error(Vagrant::Errors::SSHInvalidShell)
       end
     end
   end
@@ -144,26 +138,34 @@ describe VagrantPlugins::CommunicatorWinSSH::Communicator do
   describe ".execute" do
     before(&connection_setup)
     it "runs valid command and returns successful status code" do
-      expect(ssh_cmd_file).to receive(:puts).with(/dir/)
+      expect(channel).to receive(:exec).with(/dir/)
       expect(communicator.execute("dir")).to eq(0)
     end
 
     it "prepends UUID output to command for garbage removal" do
-      expect(ssh_cmd_file).to receive(:puts).
-        with(/ECHO OFF\nECHO #{command_garbage_marker}\nECHO #{command_garbage_marker}.*/)
+      expect(channel).to receive(:exec).
+        with(/ECHO #{command_garbage_marker} && ECHO #{command_garbage_marker}.*/)
       expect(communicator.execute("dir")).to eq(0)
+    end
+
+    context "with PowerShell as shell" do
+      it "prepends UUID output to command using PowerShell commands" do
+        expect(channel).to receive(:exec).
+          with(/Write-Host #{command_garbage_marker}; \[Console\]::Error.WriteLine\('#{command_garbage_marker}'\).*/)
+        expect(communicator.execute("dir", shell: "powershell")).to eq(0)
+      end
     end
 
     context "with command returning an error" do
       let(:exit_data) { double("exit_data", read_long: 1) }
 
       it "raises error when exit-code is non-zero" do
-        expect(ssh_cmd_file).to receive(:puts).with(/dir/)
+        expect(channel).to receive(:exec).with(/dir/)
         expect{ communicator.execute("dir") }.to raise_error(Vagrant::Errors::VagrantError)
       end
 
       it "returns exit-code when exit-code is non-zero and error check is disabled" do
-        expect(ssh_cmd_file).to receive(:puts).with(/dir/)
+        expect(channel).to receive(:exec).with(/dir/)
         expect(communicator.execute("dir", error_check: false)).to eq(1)
       end
     end
@@ -215,7 +217,7 @@ describe VagrantPlugins::CommunicatorWinSSH::Communicator do
 
     context "with exit code as non-zero" do
       before do
-        expect(exit_data).to receive(:read_long).and_return 1
+        expect(exit_data).to receive(:read_long).and_return(1)
       end
 
       it "returns false" do
