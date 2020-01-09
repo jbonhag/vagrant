@@ -54,7 +54,7 @@ SCRIPT
           end
 
           tfile.close
-          upload(tfile.path, remote_name)
+          upload(tfile.path, remote_name, mkdir: false)
           tfile.delete
 
           base_cmd = shell_cmd(opts.merge(shell: base_cmd))
@@ -156,7 +156,13 @@ SCRIPT
         @machine.config.winssh
       end
 
-      def upload(from, to)
+      def upload(from, to, **opts)
+        opts = {
+          mkdir: true
+        }.merge(opts)
+
+        mkdir = opts[:mkdir]
+
         @logger.debug("Uploading: #{from} to #{to}")
 
         if File.directory?(from)
@@ -176,7 +182,7 @@ SCRIPT
                 next if entry == "." || entry == ".."
                 full_path = File.join(path, entry)
                 dest = File.join(to, path.sub(/^#{Regexp.escape(from)}/, ""))
-                create_remote_directory(dest)
+                create_remote_directory(dest) if mkdir
                 uploader.call(full_path, dest)
               end
             else
@@ -189,7 +195,7 @@ SCRIPT
                 end
               end
               @logger.debug("Ensuring remote directory exists for destination upload")
-              create_remote_directory(dest.split("\\")[0..-2].join("\\"))
+              create_remote_directory(dest.split("\\")[0..-2].join("\\")) if mkdir
               @logger.debug("Uploading file #{path} to remote #{dest}")
               upload_file = File.open(path, "rb")
               begin
@@ -215,15 +221,7 @@ SCRIPT
       end
 
       def create_remote_directory(dir)
-        # We can't wrap this in a script because we need to be able to create a
-        # directory as a one-off command.
-        info = @machine.ssh_info
-        opts = {}
-
-        command = "if not exist \"#{dir}\" mkdir \"#{dir}\""
-        opts[:extra_args] = [command]
-        opts[:subprocess] = true
-        Vagrant::Util::SSH.exec(info, opts)
+        execute("if not exist \"#{dir}\" mkdir \"#{dir}\"", shell: "cmd")
       end
     end
   end
