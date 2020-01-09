@@ -141,7 +141,9 @@ module VagrantPlugins
               shell_args += " -ExecutionPolicy Bypass" if config.powershell_args !~ /[-\/]ExecutionPolicy/i
               # CLIXML output is kinda useless, especially on non-windows hosts
               shell_args += " -OutputFormat Text" if config.powershell_args !~ /[-\/]OutputFormat/i
-              command = "#{env}\npowershell #{shell_args} #{upload_path}#{args}"
+              command = "#{env}; powershell #{shell_args} #{upload_path}#{args}"
+            elsif remote_ext == "bat"
+              command = "#{env}; #{upload_path}#{args}"
             else
               command = "#{env}\n#{upload_path}#{args}"
             end
