@@ -221,7 +221,7 @@ SCRIPT
       end
 
       def create_remote_directory(dir)
-        execute("if not exist \"#{dir}\" mkdir \"#{dir}\"", shell: "cmd")
+        execute("dir \"#{dir}\"\n if errorlevel 1 (mkdir \"#{dir}\")", shell: "cmd")
       end
     end
   end
