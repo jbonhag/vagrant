@@ -24,22 +24,38 @@ module VagrantPlugins
         @logger.info("Execute: #{command} (sudo=#{sudo.inspect})")
         exit_status = nil
 
-        # Open the channel so we can execute our command
+        # Open the channel so we can execute or command
         channel = connection.open_channel do |ch|
           marker_found = false
           data_buffer = ''
           stderr_marker_found = false
           stderr_data_buffer = ''
 
+          tfile = Tempfile.new('vagrant-ssh')
+          remote_ext = shell == "powershell" ? "ps1" : "bat"
+          remote_name = "#{machine_config_ssh.upload_directory}\\#{File.basename(tfile.path)}.#{remote_ext}"
+
           if shell == "powershell"
-            base_cmd = <<-SCRIPT.force_encoding('ASCII-8BIT')
-powershell Write-Host #{CMD_GARBAGE_MARKER}; [Console]::Error.WriteLine('#{CMD_GARBAGE_MARKER}') #{command}"
+            base_cmd = "powershell -File #{remote_name}"
+            tfile.puts <<-SCRIPT.force_encoding('ASCII-8BIT')
+Remove-Item #{remote_name}
+Write-Host #{CMD_GARBAGE_MARKER}
+[Console]::Error.WriteLine("#{CMD_GARBAGE_MARKER}")
+#{command}
 SCRIPT
           else
-            base_cmd = <<-SCRIPT.force_encoding('ASCII-8BIT')
-cmd /Q /C ECHO #{CMD_GARBAGE_MARKER} && ECHO #{CMD_GARBAGE_MARKER} 1>&2 && #{command}
+            base_cmd = remote_name
+            tfile.puts <<-SCRIPT.force_encoding('ASCII-8BIT')
+ECHO OFF
+ECHO #{CMD_GARBAGE_MARKER}
+ECHO #{CMD_GARBAGE_MARKER} 1>&2
+#{command}
 SCRIPT
           end
+
+          tfile.close
+          upload(tfile.path, remote_name)
+          tfile.delete
 
           base_cmd = shell_cmd(opts.merge(shell: base_cmd))
           @logger.debug("Base SSH exec command: #{base_cmd}")
@@ -199,7 +215,15 @@ SCRIPT
       end
 
       def create_remote_directory(dir)
-        execute("if not exist \"#{dir}\" mkdir \"#{dir}\"", shell: "cmd")
+        # We can't wrap this in a script because we need to be able to create a
+        # directory as a one-off command.
+        info = @machine.ssh_info
+        opts = {}
+
+        command = "if not exist \"#{dir}\" mkdir \"#{dir}\""
+        opts[:extra_args] = [command]
+        opts[:subprocess] = true
+        Vagrant::Util::SSH.exec(info, opts)
       end
     end
   end
