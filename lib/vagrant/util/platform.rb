@@ -124,7 +124,7 @@ module Vagrant
             end
           end
 
-          ps_cmd = "$x = (Get-VMHost).Name; if($x -eq [System.Net.Dns]::GetHostName()){ Write-Output 'true'}"
+          ps_cmd = "if (Get-Command Get-VMHost -errorAction SilentlyContinue){$x = (Get-VMHost).Name; if($x -eq [System.Net.Dns]::GetHostName()){ Write-Output 'true'}}"
           output = Vagrant::Util::PowerShell.execute_cmd(ps_cmd)
           result = output == "true"
 

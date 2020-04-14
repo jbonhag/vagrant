@@ -248,6 +248,13 @@ describe Vagrant::Util::Platform do
         expect(Vagrant::Util::Platform.windows_hyperv_admin?).to be_truthy
       end
     end
+
+    context "when Get-VMHost cmdlet doesn't exist" do
+      it "should return false" do
+        expect(Vagrant::Util::PowerShell).to receive(:execute_cmd).with(/Get-Command Get-VMHost/).and_return("")
+        expect(Vagrant::Util::Platform.windows_hyperv_admin?).to be_falsy
+      end
+    end
   end
 
   describe ".windows_hyperv_enabled?" do
