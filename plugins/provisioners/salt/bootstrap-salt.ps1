@@ -62,6 +62,11 @@ If ([convert]::ToInt32($versionYear) -ge 2017)
   $minionFilename = "Salt-Minion-$version-Py$pythonVersion-$arch-Setup.exe"
 }
 Write-Host "Downloading Salt minion installer $minionFilename"
+# Allows the operating system to choose the best protocol to use. Older versions
+# of .NET may not have the `SystemDefault` enum.
+if ([Enum]::GetNames("Net.SecurityProtocolType").Contains("SystemDefault")) {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::SystemDefault
+}
 $webclient = New-Object System.Net.WebClient
 $url = "https://repo.saltstack.com/windows/$minionFilename"
 $file = "C:\tmp\salt.exe"
