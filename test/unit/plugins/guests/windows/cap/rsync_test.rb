@@ -11,6 +11,7 @@ describe "VagrantPlugins::GuestWindows::Cap::RSync" do
 
   before do
     allow(machine).to receive(:communicate).and_return(communicator)
+    allow(machine).to receive_message_chain(:config, :vm, :communicator)
   end
 
   after do
@@ -21,6 +22,17 @@ describe "VagrantPlugins::GuestWindows::Cap::RSync" do
     it 'makes the guestpath directory with mkdir' do
       communicator.expect_command("mkdir -p '/sync_dir'")
       described_class.rsync_pre(machine, guestpath: '/sync_dir')
+    end
+
+    context "when using winssh communicator" do
+      before do
+        allow(machine).to receive_message_chain(:config, :vm, :communicator).and_return(:winssh)
+      end
+
+      it "creates the directory using the standard Windows path" do
+        communicator.expect_command("md -Force 'c:\/sync_dir'")
+        described_class.rsync_pre(machine, guestpath: "/cygdrive/c/sync_dir")
+      end
     end
   end
 end

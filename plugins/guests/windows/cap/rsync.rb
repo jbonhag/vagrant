@@ -13,7 +13,13 @@ module VagrantPlugins
           machine.communicate.tap do |comm|
             # rsync does not construct any gaps in the path to the target directory
             # make sure that all subdirectories are created
-            comm.execute("mkdir -p '#{opts[:guestpath]}'")
+            guestpath = opts[:guestpath]
+            if machine.config.vm.communicator == :winssh
+              guestpath = guestpath.gsub( /^\/cygdrive\/([a-zA-Z])/, '\1:' )
+              comm.execute("md -Force '#{guestpath}'")
+            else
+              comm.execute("mkdir -p '#{guestpath}'")
+            end
           end
         end
       end
