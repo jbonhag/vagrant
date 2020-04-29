@@ -108,7 +108,7 @@ module VagrantPlugins
         end
 
         def self.handle_configure_dvd(machine, dvd)
-          machine.provider.driver.attach_disk(1, 1, dvd.path)
+          machine.provider.driver.attach_disk(1, 1, dvd.file, "dvddrive")
         end
 
         # Check to see if current disk is configured based on defined_disks

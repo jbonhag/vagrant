@@ -377,7 +377,7 @@ describe VagrantPlugins::ProviderVirtualBox::Cap::ConfigureDisks do
     let(:storage_controllers) { [double("controller0"), double("controller1")] }
 
     it "attaches to the first controller" do
-      expect(driver).to receive(:attach_disk).with(1, 1, "/tmp/untitled.iso")
+      expect(driver).to receive(:attach_disk).with(1, 1, "/tmp/untitled.iso", "dvddrive")
 
       subject.handle_configure_dvd(machine, dvd_config)
     end
