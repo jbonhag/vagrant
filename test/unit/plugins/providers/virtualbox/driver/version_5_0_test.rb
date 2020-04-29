@@ -90,4 +90,14 @@ OUTPUT
       end
     end
   end
+
+  describe "#attach_disk" do
+    it "attaches a dvd device to the IDE controller" do
+      expect(subject).to receive(:execute) do |*args|
+        storagectl = args[args.index("--storagectl") + 1]
+        expect(storagectl).to eq("IDE Controller")
+      end
+      subject.attach_disk(anything, anything, anything, "dvddrive")
+    end
+  end
 end

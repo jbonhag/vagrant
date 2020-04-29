@@ -29,7 +29,11 @@ module VagrantPlugins
         # @param [Hash]   opts -  additional options
         def attach_disk(port, device, file, type="hdd", **opts)
           # Maybe only support SATA Controller for `:disk`???
-          controller = "SATA Controller"
+          if type == "hdd"
+            controller = "SATA Controller"
+          else
+            controller = "IDE Controller"
+          end
 
           comment = "This disk is managed externally by Vagrant. Removing or adjusting settings could potentially cause issues with Vagrant."
 
