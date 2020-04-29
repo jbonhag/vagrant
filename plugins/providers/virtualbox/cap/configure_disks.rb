@@ -39,8 +39,7 @@ module VagrantPlugins
               # TODO: Write me
               machine.ui.info(I18n.t("vagrant.cap.configure_disks.floppy_not_supported", name: disk.name))
             elsif disk.type == :dvd
-              # TODO: Write me
-              machine.ui.info(I18n.t("vagrant.cap.configure_disks.dvd_not_supported", name: disk.name))
+              dvd_data = handle_configure_dvd(machine, disk)
             end
           end
 
@@ -106,6 +105,10 @@ module VagrantPlugins
           end
 
           disk_metadata
+        end
+
+        def self.handle_configure_dvd(machine, dvd)
+          machine.provider.driver.attach_disk(1, 1, dvd.path)
         end
 
         # Check to see if current disk is configured based on defined_disks

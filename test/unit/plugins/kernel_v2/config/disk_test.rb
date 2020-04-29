@@ -10,19 +10,19 @@ describe VagrantPlugins::Kernel_V2::VagrantConfigDisk do
   subject { described_class.new(type) }
 
   let(:provider) { double("provider") }
-  let(:machine) { double("machine", provider: provider) }
+  let(:machine) { double("machine", provider: provider, name: "default") }
 
 
   def assert_invalid
     errors = subject.validate(machine)
-    if !errors.empty? { |v| !v.empty? }
+    if !errors.values.any? { |v| !v.empty? }
       raise "No errors: #{errors.inspect}"
     end
   end
 
   def assert_valid
     errors = subject.validate(machine)
-    if !errors.empty? { |v| v.empty? }
+    if !errors.values.all? { |v| v.empty? }
       raise "Errors: #{errors.inspect}"
     end
   end
@@ -47,7 +47,7 @@ describe VagrantPlugins::Kernel_V2::VagrantConfigDisk do
       expect(subject.type).to eq(type)
     end
 
-    it "defaults to non-primray disk" do
+    it "defaults to non-primary disk" do
       subject.finalize!
       expect(subject.primary).to eq(false)
     end
@@ -55,6 +55,29 @@ describe VagrantPlugins::Kernel_V2::VagrantConfigDisk do
 
   describe "defining a new config that needs to match internal restraints" do
     before do
+    end
+  end
+
+  describe "config for dvd type" do
+    let(:iso_path) { "/tmp/untitled.iso" }
+
+    before do
+      subject.type = :dvd
+      subject.name = "untitled"
+    end
+
+    it "is valid with file path set" do
+      allow(File).to receive(:file?).with(iso_path).and_return(true)
+      subject.file = iso_path
+      subject.finalize!
+      assert_valid
+    end
+
+    it "is invalid if file path is unset" do
+      subject.finalize!
+      errors = subject.validate(machine)
+      expect(errors.length).to be(1)
+      assert_invalid
     end
   end
 end
