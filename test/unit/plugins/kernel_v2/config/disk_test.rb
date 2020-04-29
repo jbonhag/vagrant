@@ -15,14 +15,14 @@ describe VagrantPlugins::Kernel_V2::VagrantConfigDisk do
 
   def assert_invalid
     errors = subject.validate(machine)
-    if !errors.values.any? { |v| !v.empty? }
+    if !errors.empty? { |v| !v.empty? }
       raise "No errors: #{errors.inspect}"
     end
   end
 
   def assert_valid
     errors = subject.validate(machine)
-    if !errors.values.all? { |v| v.empty? }
+    if !errors.empty? { |v| v.empty? }
       raise "Errors: #{errors.inspect}"
     end
   end
@@ -76,6 +76,7 @@ describe VagrantPlugins::Kernel_V2::VagrantConfigDisk do
     it "is invalid if file path is unset" do
       subject.finalize!
       errors = subject.validate(machine)
+      require 'pry'; binding.pry
       expect(errors.length).to be(1)
       assert_invalid
     end
