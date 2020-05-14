@@ -41,6 +41,11 @@ module VagrantPlugins
         Cap::MountSMBSharedFolder
       end
 
+      guest_capability(:darwin, :mount_virtualbox_shared_folder) do
+        require_relative "cap/mount_virtualbox_shared_folder"
+        Cap::MountVirtualBoxSharedFolder
+      end
+
       guest_capability(:darwin, :mount_vmware_shared_folder) do
         require_relative "cap/mount_vmware_shared_folder"
         Cap::MountVmwareSharedFolder
