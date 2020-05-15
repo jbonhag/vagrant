@@ -25,7 +25,10 @@ describe VagrantPlugins::ProviderVirtualBox::Cap::ConfigureDisks do
     double(:state)
   end
 
-  let(:vm_info) { {"SATA Controller-ImageUUID-0-0" => "12345",
+  let(:vm_info) { {"storagecontrollername0" => "SATA Controller",
+                   "storagecontrollertype0" => "IntelAhci",
+                   "storagecontrollermaxportcount0" => "30",
+                   "SATA Controller-ImageUUID-0-0" => "12345",
                    "SATA Controller-ImageUUID-1-0" => "67890"} }
 
   let(:defined_disks) { [double("disk", name: "vagrant_primary", size: "5GB", primary: true, type: :disk),
@@ -425,6 +428,14 @@ describe VagrantPlugins::ProviderVirtualBox::Cap::ConfigureDisks do
         expect(driver).not_to receive(:attach_disk)
         subject.handle_configure_dvd(machine, dvd_config)
       end
+    end
+  end
+
+  describe ".storage_controllers" do
+    it "returns the storage controllers" do
+      expect(subject.storage_controllers(machine).first[:name]).to eq("SATA Controller")
+      expect(subject.storage_controllers(machine).first[:type]).to eq("IntelAhci")
+      expect(subject.storage_controllers(machine).first[:maxportcount]).to eq("30")
     end
   end
 end

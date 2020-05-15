@@ -108,6 +108,31 @@ module VagrantPlugins
           disk_metadata
         end
 
+        # Helper method to get a list of storage controllers added to the
+        # current machine
+        #
+        # @param [Vagrant::Machine] machine - the current machine
+        def self.storage_controllers(machine)
+          vm_info = machine.provider.driver.show_vm_info
+          count = vm_info.count { |key, value| key.match(/storagecontrollername/) }
+
+          (0..count).map do |n|
+            {
+              name: vm_info["storagecontrollername#{n}"],
+              type: vm_info["storagecontrollertype#{n}"],
+              maxportcount: vm_info["storagecontrollermaxportcount#{n}"]
+            }
+          end
+        end
+
+        def self.sata_controller(machine)
+          storage_controllers(machine).detect { |sc| "IntelAhci" == sc[:type] }
+        end
+
+        def self.ide_controller(machine)
+          storage_controllers(machine).detect { |sc| ["PIIX4", "PIIX3", "ICH6"].include?(sc[:type]) }
+        end
+
         # Helper method to get the UUID of a specific controller attachment
         #
         # @param [Vagrant::Machine] machine - the current machine
