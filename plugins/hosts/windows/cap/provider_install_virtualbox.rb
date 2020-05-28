@@ -12,9 +12,9 @@ module VagrantPlugins
       class ProviderInstallVirtualBox
         # The URL to download VirtualBox is hardcoded so we can have a
         # known-good version to download.
-        URL = "http://download.virtualbox.org/virtualbox/5.0.10/VirtualBox-5.0.10-104061-Win.exe".freeze
-        VERSION = "5.0.10".freeze
-        SHA256SUM = "3e5ed8fe4ada6eef8dfb4fe6fd79fcab4b242acf799f7d3ab4a17b43838b1e04".freeze
+        URL = "https://download.virtualbox.org/virtualbox/6.1.8/VirtualBox-6.1.8-137981-Win.exe".freeze
+        VERSION = "6.1.8".freeze
+        SHA256SUM = "28f03359b9db46156628208dcb26572cf258d0803031a97c6533c49fff60dade".freeze
 
         def self.provider_install_virtualbox(env)
           path = Dir::Tmpname.create("vagrant-provider-install-virtualbox") {}
