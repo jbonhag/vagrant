@@ -1971,6 +1971,7 @@ en:
         box_download_options_not_converted: |-
           Something went wrong converting VM config `box_download_options`. Value for provided key '%{missing_key}' is invalid type. Should be String or Bool
         clone_and_box: "Only one of clone or box can be specified."
+        config_type: "Found '%{option}' specified as type '%{given}', should be '%{required}'"
         hostname_invalid_characters: |-
           The hostname set for the VM '%{name}' should only contain letters, numbers,
           hyphens or dots. It cannot start with a hyphen or dot.
@@ -1992,6 +1993,7 @@ en:
           %{disk_names}
 
           Disk names must be unique.
+        multiple_networks_set_hostname: "Multiple networks have set `:hostname`"
         name_invalid: |-
           The sub-VM name '%{name}' is invalid. Please don't use special characters.
         network_ip_ends_in_one: |-
@@ -2010,6 +2012,7 @@ en:
           Forwarded port definitions require a "host" and "guest" value
         network_type_invalid: |-
           Network type '%{type}' is invalid. Please use a valid network type.
+        network_with_hostname_must_set_ip: "Network specified with `:hostname` must provide a static ip"
         provisioner_not_found: |-
           The '%{name}' provisioner could not be found.
         shared_folder_guestpath_duplicate: |-
@@ -2256,6 +2259,34 @@ en:
           If Vagrant fails to reattach the original disk, it is recommended that you open the VirtualBox GUI and navigate to the current guests settings for '%{name}' and look at the 'storage' section. Here is where you can reattach a missing disk if Vagrant fails to do so...
         recovery_attached_disks: |-
           Disk has been reattached. Vagrant will now continue on an raise the exception receieved
+    cloud_init:
+      content_type_not_set: |-
+        'content_type' must be defined for a cloud_init config. Guest '%{machine}'
+        has not defined a 'content_type' for its cloud_init config. Valid options
+        supported by Vagrant are listed below:
+
+        %{accepted_types}
+      incorrect_content_type: |-
+        Content-type "%{content_type}" is not supported by Vagrant and
+        cloud-init on machine '%{machine}'. Valid options supported by Vagrant are
+        listed below:
+
+        %{accepted_types}
+      incorrect_inline_type: |-
+        The inline config cloud_init option for guest '%{machine}' is of type '%{type}', but
+        should be a String.
+      incorrect_path_type: |-
+        The path '%{path}' given for guest '%{machine}' is of type '%{type}'.
+        Config option 'path' must be a String.
+      incorrect_type_set: |-
+        The type '%{type}' defined for a cloud_init config with guest '%{machine}'
+        is not a valid type. Currently, Vagrant only supports type: '%{default_type}'.
+      path_and_inline_set: |-
+        Guest '%{machine}' defines both a 'path' and 'inline' for its cloud_init config,
+        however only one config option should be defined for cloud_init.
+      path_invalid: |-
+        The path '%{path}' defined for guest '%{machine}' cloud_init config was
+        not found on the system.
     actions:
       runner:
         waiting_cleanup: "Waiting for cleanup before exiting..."
