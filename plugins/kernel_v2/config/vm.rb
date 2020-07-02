@@ -13,6 +13,7 @@ require "vagrant/util/map_command_options"
 require File.expand_path("../vm_provisioner", __FILE__)
 require File.expand_path("../vm_subvm", __FILE__)
 require File.expand_path("../disk", __FILE__)
+require File.expand_path("../cloud_init", __FILE__)
 
 module VagrantPlugins
   module Kernel_V2
@@ -22,6 +23,8 @@ module VagrantPlugins
       DEFAULT_VM_NAME = :default
 
       attr_accessor :allowed_synced_folder_types
+      attr_accessor :allow_fstab_modification
+      attr_accessor :allow_hosts_modification
       attr_accessor :base_mac
       attr_accessor :base_address
       attr_accessor :boot_timeout
@@ -47,6 +50,7 @@ module VagrantPlugins
       attr_accessor :usable_port_range
       attr_reader :provisioners
       attr_reader :disks
+      attr_reader :cloud_init_configs
       attr_reader :box_extra_download_options
 
       # This is an experimental feature that isn't public yet.
@@ -56,6 +60,7 @@ module VagrantPlugins
         @logger = Log4r::Logger.new("vagrant::config::vm")
 
         @allowed_synced_folder_types   = UNSET_VALUE
+        @allow_fstab_modification      = UNSET_VALUE
         @base_mac                      = UNSET_VALUE
         @base_address                  = UNSET_VALUE
         @boot_timeout                  = UNSET_VALUE
@@ -73,6 +78,7 @@ module VagrantPlugins
         @box_extra_download_options    = UNSET_VALUE
         @box_url                       = UNSET_VALUE
         @box_version                   = UNSET_VALUE
+        @allow_hosts_modification      = UNSET_VALUE
         @clone                         = UNSET_VALUE
         @communicator                  = UNSET_VALUE
         @graceful_halt_timeout         = UNSET_VALUE
@@ -81,6 +87,7 @@ module VagrantPlugins
         @post_up_message               = UNSET_VALUE
         @provisioners                  = []
         @disks                         = []
+        @cloud_init_configs            = []
         @usable_port_range             = UNSET_VALUE
 
         # Internal state
@@ -152,6 +159,28 @@ module VagrantPlugins
             new_disks << p.dup
           end
           result.instance_variable_set(:@disks, new_disks)
+
+          # Merge defined cloud_init_configs
+          other_cloud_init_configs = other.instance_variable_get(:@cloud_init_configs)
+          new_cloud_init_configs   = []
+          @cloud_init_configs.each do |p|
+            other_p = other_cloud_init_configs.find { |o| p.id == o.id }
+            if other_p
+              # there is an override. take it.
+              other_p.config = p.config.merge(other_p.config)
+
+              # Remove duplicate disk config from other
+              p = other_p
+              other_cloud_init_configs.delete(other_p)
+            end
+
+            # there is an override, merge it into the
+            new_cloud_init_configs << p.dup
+          end
+          other_cloud_init_configs.each do |p|
+            new_cloud_init_configs << p.dup
+          end
+          result.instance_variable_set(:@cloud_init_configs, new_cloud_init_configs)
 
           # Merge the providers by prepending any configuration blocks we
           # have for providers onto the new configuration.
@@ -446,12 +475,38 @@ module VagrantPlugins
         @disks << disk_config
       end
 
+      # Stores config options for cloud_init
+      #
+      # @param [Symbol] type
+      # @param [Hash]   options
+      # @param [Block]  block
+      def cloud_init(type=nil, **options, &block)
+        type = type.to_sym if type
+
+        cloud_init_config = VagrantConfigCloudInit.new(type)
+
+        if block_given?
+          block.call(cloud_init_config, VagrantConfigCloudInit)
+        else
+          # config is hash
+          cloud_init_config.set_options(options)
+        end
+
+        if !Vagrant::Util::Experimental.feature_enabled?("cloud_init")
+          @logger.warn("cloud_init config defined, but experimental feature is not enabled. To use this feature, enable it with the experimental flag `cloud_init`. cloud_init config will not be added to internal config, and will be ignored.")
+          return
+        end
+
+        @cloud_init_configs << cloud_init_config
+      end
+
       #-------------------------------------------------------------------
       # Internal methods, don't call these.
       #-------------------------------------------------------------------
 
       def finalize!
         # Defaults
+        @allow_fstab_modification = true if @allow_fstab_modification == UNSET_VALUE
         @allowed_synced_folder_types = nil if @allowed_synced_folder_types == UNSET_VALUE
         @base_mac = nil if @base_mac == UNSET_VALUE
         @base_address = nil if @base_address == UNSET_VALUE
@@ -474,6 +529,7 @@ module VagrantPlugins
         @box_version = nil if @box_version == UNSET_VALUE
         @box_download_options = {} if @box_download_options == UNSET_VALUE
         @box_extra_download_options = Vagrant::Util::MapCommandOptions.map_to_command_options(@box_download_options)
+        @allow_hosts_modification = true if @allow_hosts_modification == UNSET_VALUE
         @clone = nil if @clone == UNSET_VALUE
         @communicator = nil if @communicator == UNSET_VALUE
         @graceful_halt_timeout = 60 if @graceful_halt_timeout == UNSET_VALUE
@@ -613,6 +669,10 @@ module VagrantPlugins
 
         @disks.each do |d|
           d.finalize!
+        end
+
+        @cloud_init_configs.each do |c|
+          c.finalize!
         end
 
         if !current_dir_shared && !@__synced_folders["/vagrant"]
@@ -792,7 +852,17 @@ module VagrantPlugins
         valid_network_types = [:forwarded_port, :private_network, :public_network]
 
         port_range=(1..65535)
+        has_hostname_config = false
         networks.each do |type, options|
+          if options[:hostname]
+            if has_hostname_config
+              errors << I18n.t("vagrant.config.vm.multiple_networks_set_hostname")
+            end
+            if options[:ip] == nil
+              errors << I18n.t("vagrant.config.vm.network_with_hostname_must_set_ip")
+            end
+            has_hostname_config = true
+          end
           if !valid_network_types.include?(type)
             errors << I18n.t("vagrant.config.vm.network_type_invalid",
                             type: type.to_s)
@@ -861,6 +931,12 @@ module VagrantPlugins
         @disks.each do |d|
           error = d.validate(machine)
           errors.concat(error) if !error.empty?
+        end
+
+        # Validate clout_init_configs
+        @cloud_init_configs.each do |c|
+          error = c.validate(machine)
+          errors.concat error if !error.empty?
         end
 
         # We're done with VM level errors so prepare the section
@@ -935,6 +1011,18 @@ module VagrantPlugins
               "vagrant.config.vm.name_invalid",
               name: name)
           end
+        end
+
+        if ![TrueClass, FalseClass].include?(@allow_fstab_modification.class)
+          errors["vm"] << I18n.t("vagrant.config.vm.config_type",
+            option: "allow_fstab_modification", given: @allow_fstab_modification.class, required: "Boolean"
+          )
+        end
+        
+        if ![TrueClass, FalseClass].include?(@allow_hosts_modification.class)
+          errors["vm"] << I18n.t("vagrant.config.vm.config_type",
+            option: "allow_hosts_modification", given: @allow_hosts_modification.class, required: "Boolean"
+          )
         end
 
         errors

@@ -49,6 +49,20 @@ describe VagrantPlugins::Kernel_V2::VMConfig do
     assert_valid
   end
 
+  it  "validates disables_host_modification option" do
+    subject.allow_hosts_modification = true
+    subject.finalize!
+    assert_valid
+
+    subject.allow_hosts_modification = false
+    subject.finalize!
+    assert_valid
+
+    subject.allow_hosts_modification = "truthy"
+    subject.finalize!
+    assert_invalid
+  end
+
   describe "#base_mac" do
     it "defaults properly" do
       subject.finalize!
@@ -302,6 +316,32 @@ describe VagrantPlugins::Kernel_V2::VMConfig do
         guest: "45", host: "74545"
       subject.finalize!
       assert_invalid
+    end
+
+    it "is an error if multiple networks set hostname" do
+      subject.network "public_network", ip: "192.168.0.1", hostname: true
+      subject.network "public_network", ip: "192.168.0.2", hostname: true
+      subject.finalize!
+      assert_invalid
+    end
+
+    it "is an error if networks set hostname without ip" do
+      subject.network "public_network", hostname: true
+      subject.finalize!
+      assert_invalid
+    end
+
+    it "is not an error if hostname non-bool" do
+      subject.network "public_network",  ip: "192.168.0.1", hostname: "true"
+      subject.finalize!
+      assert_valid
+    end
+
+    it "is not an error if one hostname is true" do
+      subject.network "public_network",  ip: "192.168.0.1", hostname: true
+      subject.network "public_network",  ip: "192.168.0.2", hostname: false
+      subject.finalize!
+      assert_valid
     end
   end
 
